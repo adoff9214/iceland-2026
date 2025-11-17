@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iceland Ultra Pro 2026 🇮🇸</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-20px); } }
+        @keyframes aurora { 0% { opacity: 0.3; transform: translateX(-100%); } 50% { opacity: 0.6; } 100% { opacity: 0.3; transform: translateX(100%); } }
+        @keyframes gradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-float { animation: float 6s ease-in-out infinite; }
+        .animate-aurora { animation: aurora 8s linear infinite; }
+        .animate-gradient { background-size: 200% 200%; animation: gradient 4s ease infinite; }
+        .animate-slide-down { animation: slideDown 0.3s ease-out; }
+        .animate-pulse-slow { animation: pulse 2s ease-in-out infinite; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="m-0 p-0 overflow-x-hidden">
+    <div id="root"></div>
+    <script>
+        const state = {
+            currentDay: 1,
+            showTimeline: false,
+            showSettings: false,
+            selectedTheme: 'aurora',
+            iskAmount: '1000',
+            usdAmount: '7.20',
+            liveWeather: {},
+            liveKP: null,
+            lastUpdate: null,
+            loading: false,
+            notificationsEnabled: false,
+            scheduledAlerts: []
+        };
+
+        const API_KEY = '4edf615efe92206cec07aac861bb5186';
+        const exchangeRate = 0.0072;
+        const tripStart = new Date('2026-02-01T08:30:00');
+        let countdown = '', currentTime = '';
+
+        const themes = {
+            aurora: { primary: 'from-blue-600 to-purple-600', bg: 'from-slate-900 via-blue-900 to-slate-900' },
+            glacier: { primary: 'from-cyan-500 to-blue-500', bg: 'from-slate-900 via-cyan-900 to-slate-900' },
+            volcano: { primary: 'from-orange-500 to-red-500', bg: 'from-slate-900 via-orange-900 to-slate-900' },
+            midnight: { primary: 'from-indigo-600 to-purple-600', bg: 'from-gray-900 via-indigo-900 to-black' }
+        };
+
+        const LOCATIONS = {
+            1: { name: 'Reykjavík', lat: 64.1466, lon: -21.9426 },
+            2: { name: 'Þingvellir', lat: 64.2558, lon: -21.1297 },
+            3: { name: 'Vík', lat: 63.4186, lon: -19.0059 },
+            4: { name: 'Jökulsárlón', lat: 64.0484, lon: -16.1794 },
+            5: { name: 'Vík', lat: 63.4186, lon: -19.0059 },
+            6: { name: 'Grundarfjörður', lat: 64.9246, lon: -23.3064 },
+            7: { name: 'Borgarnes', lat: 64.5386, lon: -21.9174 },
+            8: { name: 'Grindavík', lat: 63.8424, lon: -22.4343 }
+        };
+
+        const itinerary = [
+            {
+                day: 1, date: 'Dom 1 Feb', title: 'Reykjavík Urbano', driving: '31 mi', drivingTime: 0.8, photos: 25,
+                sunrise: '10:37 AM', sunset: '4:53 PM', lightHours: '6h 16min',
+                photoRef: 'https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=800&q=80',
+                highlights: ['Hallgrímskirkja', 'Harpa', 'Sun Voyager'],
+                parking: [
+                    { name: 'Hallgrímskirkja', coords: '64.1426, -21.9266', note: 'Parking público cerca' },
+                    { name: 'Harpa', coords: '64.1500, -21.9326', note: 'Parking subterráneo' },
+                    { name: 'Sun Voyager', coords: '64.1477, -21.9224', note: 'Estacionamiento costero' }
+                ],
+                aurora: { spot: 'Kleifarvatn', epic: 8.5, coords: '63.9335, -22.0583', time: '9:30 PM-12:00 AM' },
+                hotel: 'Center Hotels Plaza',
+                tips: ['Usa crampones en aceras heladas', 'Evita bordes costeros con viento'],
+                schedule: [
+                    { time: '8:30 AM', act: 'Llegada KEF + Sixt', dur: '1h', icon: '🛬', note: 'Recoger coche 4x4' },
+                    { time: '10:00 AM', act: 'Café Babalú (brunch)', dur: '50min', icon: '☕', note: 'Panqueques islandeses' },
+                    { time: '11:00 AM', act: 'Hallgrímskirkja mirador', dur: '40min', icon: '⛪', note: 'Vista 360° ciudad' },
+                    { time: '2:15 PM', act: 'Harpa + Sun Voyager', dur: '45min', icon: '🎭', note: 'Fotos atardecer' },
+                    { time: '4:00 PM', act: 'Check-in hotel', dur: '-', icon: '🏨', note: 'Dejar equipaje' },
+                    { time: '9:30 PM', act: 'Caza de auroras - Kleifarvatn', dur: '2-3h', icon: '🌌', note: 'Llevar trípode' }
+                ]
+            },
+            {
+                day: 2, date: 'Lun 2 Feb', title: 'Golden Circle Clásico', driving: '145 mi', drivingTime: 3.5, photos: 40,
+                sunrise: '10:35 AM', sunset: '4:56 PM', lightHours: '6h 21min',
+                photoRef: 'https://images.unsplash.com/photo-1583422409516-2895a77efded?w=800&q=80',
+                highlights: ['Þingvellir', 'Geysir', 'Gullfoss'],
+                parking: [
+                    { name: 'Þingvellir P1', coords: '64.2558, -21.1297', note: 'Parking principal 750 ISK' },
+                    { name: 'Geysir', coords: '64.3107, -20.3030', note: 'Gratis, grande' },
+                    { name: 'Gullfoss', coords: '64.3271, -20.1212', note: 'Dos parkings, gratis' }
+                ],
+                aurora: { spot: 'Þingvellir', epic: 9.0, coords: '64.2558, -21.1297', time: '9:00 PM-1:00 AM' },
+                hotel: 'Hótel Geysir',
+                tips: ['Prepara ropa impermeable para Gullfoss', 'Llega temprano a Geysir'],
+                schedule: [
+                    { time: '8:00 AM', act: 'Desayuno + checkout', dur: '1h', icon: '🍳', note: 'Buffet islandés' },
+                    { time: '9:30 AM', act: 'Þingvellir National Park', dur: '2h', icon: '🏞️', note: 'Placas tectónicas' },
+                    { time: '12:00 PM', act: 'Geysir + Strokkur', dur: '1.5h', icon: '💨', note: 'Erupción cada 8min' },
+                    { time: '2:00 PM', act: 'Almuerzo Geysir Center', dur: '45min', icon: '🍲', note: 'Sopa de cordero' },
+                    { time: '3:00 PM', act: 'Gullfoss waterfall', dur: '1h', icon: '🌊', note: 'Arco iris posible' },
+                    { time: '5:00 PM', act: 'Check-in hotel', dur: '-', icon: '🏨', note: 'Vista a Geysir' },
+                    { time: '9:00 PM', act: 'Aurora en Þingvellir', dur: '3h', icon: '🌌', note: 'Spot UNESCO' }
+                ]
+            },
+            {
+                day: 3, date: 'Mar 3 Feb', title: 'Costa Sur Épica', driving: '175 mi', drivingTime: 4.2, photos: 50,
+                sunrise: '10:32 AM', sunset: '4:58 PM', lightHours: '6h 26min',
+                photoRef: 'https://images.unsplash.com/photo-1531168556467-80aace0d0144?w=800&q=80',
+                highlights: ['Seljalandsfoss', 'Skógafoss', 'Reynisfjara'],
+                parking: [
+                    { name: 'Seljalandsfoss', coords: '63.6158, -19.9886', note: '700 ISK, impermeable obligatorio' },
+                    { name: 'Skógafoss', coords: '63.5319, -19.5111', note: 'Gratis, muy grande' },
+                    { name: 'Reynisfjara', coords: '63.4040, -19.0464', note: 'Gratis, ¡OJO CON OLAS!' }
+                ],
+                aurora: { spot: 'Reynisfjara Black Beach', epic: 10.0, coords: '63.4028, -19.0447', time: '10:00 PM-1:00 AM' },
+                hotel: 'Black Beach Suites',
+                tips: ['NUNCA des la espalda al océano', 'Olas MORTALES documentadas'],
+                schedule: [
+                    { time: '7:30 AM', act: 'Salida temprana', dur: '-', icon: '🚗', note: 'Día largo' },
+                    { time: '9:00 AM', act: 'Seljalandsfoss', dur: '1h', icon: '💦', note: 'Camina detrás cascada' },
+                    { time: '10:30 AM', act: 'Skógafoss', dur: '1.5h', icon: '🌈', note: 'Sube 527 escalones' },
+                    { time: '1:00 PM', act: 'Almuerzo Vík', dur: '1h', icon: '🍔', note: 'The Soup Company' },
+                    { time: '2:30 PM', act: 'Reynisfjara Beach', dur: '2h', icon: '🏖️', note: '¡OJO CON OLAS!' },
+                    { time: '5:00 PM', act: 'Check-in + descanso', dur: '2h', icon: '🏨', note: 'Preparar equipo noche' },
+                    { time: '10:00 PM', act: 'Aurora ÉPICA Reynisfjara', dur: '3h', icon: '🌌', note: 'SPOT MÁS ÉPICO' }
+                ]
+            },
+            {
+                day: 4, date: 'Mié 4 Feb', title: 'Glaciares & Lagunas', driving: '120 mi', drivingTime: 2.8, photos: 60,
+                sunrise: '10:29 AM', sunset: '5:01 PM', lightHours: '6h 32min',
+                photoRef: 'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800&q=80',
+                highlights: ['Jökulsárlón', 'Diamond Beach', 'Svínafellsjökull'],
+                parking: [
+                    { name: 'Jökulsárlón', coords: '64.0781, -16.2306', note: 'Gratis, muy popular' },
+                    { name: 'Diamond Beach', coords: '64.0428, -16.1767', note: 'Al otro lado Ruta 1' },
+                    { name: 'Svínafellsjökull', coords: '64.0316, -16.8726', note: 'Trail parking gratis' }
+                ],
+                aurora: { spot: 'Jökulsárlón', epic: 9.5, coords: '64.0784, -16.2306', time: '9:30 PM-12:30 AM' },
+                hotel: 'Fosshotel Glacier Lagoon',
+                tips: ['No toques los icebergs flotantes', 'Hielo extremadamente resbaladizo'],
+                schedule: [
+                    { time: '8:00 AM', act: 'Desayuno hotel', dur: '45min', icon: '🥐', note: 'Vista glaciar' },
+                    { time: '9:30 AM', act: 'Jökulsárlón Lagoon', dur: '2.5h', icon: '🧊', note: 'Tour zodiac opcional' },
+                    { time: '12:30 PM', act: 'Diamond Beach', dur: '1.5h', icon: '💎', note: 'Hielo en playa negra' },
+                    { time: '2:30 PM', act: 'Almuerzo', dur: '45min', icon: '🍕', note: 'Picnic o local' },
+                    { time: '3:30 PM', act: 'Svínafellsjökull glacier', dur: '2h', icon: '⛰️', note: 'Caminata glaciar' },
+                    { time: '6:00 PM', act: 'Check-in + cena', dur: '2h', icon: '🏨', note: 'Restaurante hotel' },
+                    { time: '9:30 PM', act: 'Aurora Jökulsárlón', dur: '3h', icon: '🌌', note: 'Reflejo en hielo' }
+                ]
+            },
+            {
+                day: 5, date: 'Jue 5 Feb', title: 'Regreso Costa Sur', driving: '160 mi', drivingTime: 3.8, photos: 45,
+                sunrise: '10:26 AM', sunset: '5:04 PM', lightHours: '6h 38min',
+                photoRef: 'https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?w=800&q=80',
+                highlights: ['Fjaðrárgljúfur', 'DC-3 Wreckage', 'Dyrhólaey'],
+                parking: [
+                    { name: 'Fjaðrárgljúfur', coords: '63.7738, -18.1743', note: 'Puede estar cerrado invierno' },
+                    { name: 'DC-3 Wreckage', coords: '63.4591, -19.3648', note: 'Parking + 60min caminata' },
+                    { name: 'Dyrhólaey', coords: '63.3983, -19.1306', note: 'Parking en faro' }
+                ],
+                aurora: { spot: 'Dyrhólaey Arch', epic: 8.8, coords: '63.3983, -19.1306', time: '9:45 PM-12:00 AM' },
+                hotel: 'Hotel Kría',
+                tips: ['Fjaðrárgljúfur puede estar cerrado', 'DC-3 requiere caminata 60min'],
+                schedule: [
+                    { time: '7:00 AM', act: 'Salida temprana', dur: '-', icon: '🚗', note: 'Aprovechar luz' },
+                    { time: '8:30 AM', act: 'Fjaðrárgljúfur Canyon', dur: '1.5h', icon: '🏜️', note: 'Verificar apertura' },
+                    { time: '11:00 AM', act: 'DC-3 Plane Wreckage', dur: '2h', icon: '✈️', note: 'Caminata playa negra' },
+                    { time: '1:30 PM', act: 'Almuerzo Vík', dur: '45min', icon: '🍜', note: 'Smidjan Brugghús' },
+                    { time: '3:00 PM', act: 'Dyrhólaey viewpoint', dur: '1.5h', icon: '🦅', note: 'Puffins en verano' },
+                    { time: '5:30 PM', act: 'Check-in Vík', dur: '-', icon: '🏨', note: 'Pueblo costero' },
+                    { time: '9:45 PM', act: 'Aurora Dyrhólaey', dur: '2.5h', icon: '🌌', note: 'Arco dramático' }
+                ]
+            },
+            {
+                day: 6, date: 'Vie 6 Feb', title: 'Snaefellsnes Peninsula', driving: '200 mi', drivingTime: 4.5, photos: 55,
+                sunrise: '10:23 AM', sunset: '5:07 PM', lightHours: '6h 44min',
+                photoRef: 'https://images.unsplash.com/photo-1517408454228-8e4a9b8ee6fa?w=800&q=80',
+                highlights: ['Kirkjufell', 'Arnarstapi', 'Snæfellsjökull'],
+                parking: [
+                    { name: 'Kirkjufell', coords: '64.9246, -23.3064', note: 'SPOT MÁS FAMOSO, llega temprano' },
+                    { name: 'Arnarstapi', coords: '64.7603, -23.6261', note: 'Parking pueblo' },
+                    { name: 'Snæfellsjökull NP', coords: '64.8068, -23.7762', note: 'Varios accesos' }
+                ],
+                aurora: { spot: 'Kirkjufell', epic: 9.8, coords: '64.9246, -23.3064', time: '9:00 PM-1:00 AM' },
+                hotel: 'Hotel Framnes',
+                tips: ['Kirkjufell es el spot MÁS fotografiado', 'Llega antes del sunset'],
+                schedule: [
+                    { time: '7:30 AM', act: 'Salida hacia península', dur: '-', icon: '🚗', note: 'Ruta escénica' },
+                    { time: '10:00 AM', act: 'Ytri Tunga (focas)', dur: '45min', icon: '🦭', note: 'Colonia de focas' },
+                    { time: '11:30 AM', act: 'Arnarstapi cliffs', dur: '1.5h', icon: '🪨', note: 'Formaciones lava' },
+                    { time: '1:30 PM', act: 'Almuerzo', dur: '45min', icon: '🥘', note: 'Local en ruta' },
+                    { time: '3:00 PM', act: 'Snæfellsjökull NP', dur: '2h', icon: '🏔️', note: 'Glaciar volcán' },
+                    { time: '6:00 PM', act: 'Check-in Grundarfjörður', dur: '1h', icon: '🏨', note: 'Pueblo pesquero' },
+                    { time: '9:00 PM', act: 'Aurora KIRKJUFELL', dur: '4h', icon: '🌌', note: 'SPOT ICÓNICO #1' }
+                ]
+            },
+            {
+                day: 7, date: 'Sáb 7 Feb', title: 'Regreso a Reykjavík', driving: '125 mi', drivingTime: 2.5, photos: 30,
+                sunrise: '10:19 AM', sunset: '5:10 PM', lightHours: '6h 51min',
+                photoRef: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&q=80',
+                highlights: ['Deildartunguhver', 'Hraunfossar', 'Borgarfjörður'],
+                parking: [
+                    { name: 'Deildartunguhver', coords: '64.6642, -21.3368', note: 'Parking pequeño gratis' },
+                    { name: 'Hraunfossar', coords: '64.7024, -20.9786', note: 'Parking gratis + trail' },
+                    { name: 'Grótta Lighthouse', coords: '64.1569, -22.0183', note: 'Última aurora spot' }
+                ],
+                aurora: { spot: 'Grótta Lighthouse', epic: 7.5, coords: '64.1569, -22.0183', time: '9:30 PM-11:30 PM' },
+                hotel: 'Tower Suites Reykjavík',
+                tips: ['Hot spring más potente de Europa', 'Última aurora'],
+                schedule: [
+                    { time: '8:30 AM', act: 'Checkout + ruta norte', dur: '-', icon: '🚗', note: 'Última etapa' },
+                    { time: '10:30 AM', act: 'Deildartunguhver', dur: '45min', icon: '♨️', note: 'Hot spring potente' },
+                    { time: '11:45 AM', act: 'Hraunfossar', dur: '1h', icon: '💧', note: 'Cascadas de lava' },
+                    { time: '1:30 PM', act: 'Almuerzo Borgarnes', dur: '1h', icon: '🍖', note: 'Settlement Center' },
+                    { time: '3:30 PM', act: 'Llegada Reykjavík', dur: '-', icon: '🏙️', note: 'Check-in hotel' },
+                    { time: '5:00 PM', act: 'Tiempo libre ciudad', dur: '3h', icon: '🛍️', note: 'Compras, cena' },
+                    { time: '9:30 PM', act: 'Aurora Grótta', dur: '2h', icon: '🌌', note: 'Última aurora' }
+                ]
+            },
+            {
+                day: 8, date: 'Dom 8 Feb', title: 'Blue Lagoon & Partida', driving: '28 mi', drivingTime: 0.7, photos: 20,
+                sunrise: '10:16 AM', sunset: '5:13 PM', lightHours: '6h 57min',
+                photoRef: 'https://images.unsplash.com/photo-1551918120-9739cb430c6d?w=800&q=80',
+                highlights: ['Blue Lagoon', 'Reykjanes', 'Vuelo de regreso'],
+                parking: [
+                    { name: 'Blue Lagoon', coords: '63.8804, -22.4495', note: 'Incluido con entrada' },
+                    { name: 'Reykjanes Geopark', coords: '63.8817, -22.4534', note: 'Múltiples spots' }
+                ],
+                aurora: null, hotel: null,
+                tips: ['Reserva Blue Lagoon con anticipación', 'Deja 3h antes del vuelo'],
+                schedule: [
+                    { time: '8:00 AM', act: 'Checkout hotel', dur: '30min', icon: '🏨', note: 'Última mañana' },
+                    { time: '9:00 AM', act: 'Blue Lagoon', dur: '3h', icon: '♨️', note: 'Relax termal' },
+                    { time: '12:30 PM', act: 'Almuerzo Blue Lagoon', dur: '1h', icon: '🍽️', note: 'Restaurante Lava' },
+                    { time: '2:00 PM', act: 'Reykjanes Peninsula', dur: '1.5h', icon: '🌋', note: 'Paisaje lunar' },
+                    { time: '4:00 PM', act: 'Devolver coche Sixt KEF', dur: '30min', icon: '🚗', note: 'Revisar tanque' },
+                    { time: '5:00 PM', act: 'Check-in vuelo', dur: '-', icon: '✈️', note: 'Adiós Islandia' }
+                ]
+            }
+        ];
+
+        // ===== APIs EN VIVO CON PROXY CORS =====
+        
+        async function getRealWeather(day) {
+            const location = LOCATIONS[day];
+            if (!location) return null;
+
+            try {
+                const url = `https://api.openweathermap.org/data/2.5/weather?lat=${location.lat}&lon=${location.lon}&appid=${API_KEY}&units=imperial`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Weather API error');
+                
+                const data = await response.json();
+                
+                const iconMap = {
+                    '01d': '☀️', '01n': '🌙', '02d': '⛅', '02n': '☁️',
+                    '03d': '☁️', '03n': '☁️', '04d': '☁️', '04n': '☁️',
+                    '09d': '🌧️', '09n': '🌧️', '10d': '🌦️', '10n': '🌧️',
+                    '11d': '⛈️', '11n': '⛈️', '13d': '🌨️', '13n': '❄️',
+                    '50d': '🌫️', '50n': '🌫️'
+                };
+
+                return {
+                    temp: Math.round(data.main.temp),
+                    condition: data.weather[0].description,
+                    wind: Math.round(data.wind.speed),
+                    icon: iconMap[data.weather[0].icon] || '☁️',
+                    feels: Math.round(data.main.feels_like),
+                    humid: data.main.humidity,
+                    location: location.name,
+                    isReal: true
+                };
+            } catch (error) {
+                console.error('Error:', error);
+                return null;
+            }
+        }
+
+        async function getRealAuroraKP() {
+            // Método 1: API Space Weather Live (sin CORS)
+            try {
+                const response = await fetch('https://www.spaceweatherlive.com/en/auroral-activity/top-50-geomagnetic-storms.json');
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    const latest = data[0];
+                    const kp = parseFloat(latest.kp);
+                    
+                    if (!isNaN(kp)) {
+                        return {
+                            kp: kp,
+                            visibility: kp >= 5 ? 90 : kp >= 3 ? 75 : 60,
+                            isReal: true,
+                            source: 'Space Weather Live',
+                            timestamp: latest.date
+                        };
+                    }
+                }
+            } catch (error) {
+                console.error('Space Weather Live falló:', error);
+            }
+
+            // Método 2: Aurora Service (API pública)
+            try {
+                const response = await fetch('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json');
+                const data = await response.json();
+                
+                if (data && data.length > 1) {
+                    const latest = data[data.length - 1];
+                    const kp = parseFloat(latest[1]);
+                    
+                    if (!isNaN(kp)) {
+                        return {
+                            kp: kp,
+                            visibility: kp >= 5 ? 90 : kp >= 3 ? 75 : 60,
+                            isReal: true,
+                            source: 'NOAA',
+                            timestamp: latest[0]
+                        };
+                    }
+                }
+            } catch (error) {
+                console.error('NOAA directo falló:', error);
+            }
+
+            // Método 3: jsonp.afeld.me proxy
+            try {
+                const response = await fetch('https://jsonp.afeld.me/?url=https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json');
+                const data = await response.json();
+                
+                if (data && data.length > 1) {
+                    const latest = data[data.length - 1];
+                    const kp = parseFloat(latest[1]);
+                    
+                    if (!isNaN(kp)) {
+                        return {
+                            kp: kp,
+                            visibility: kp >= 5 ? 90 : kp >= 3 ? 75 : 60,
+                            isReal: true,
+                            source: 'NOAA (proxy)'
+                        };
+                    }
+                }
+            } catch (error) {
+                console.error('Proxy falló:', error);
+            }
+
+            // Fallback: Simulación inteligente
+            console.log('Todas las APIs fallaron, usando simulación');
+            const now = new Date();
+            const hour = now.getHours();
+            // Valores realistas para Islandia en febrero
+            const baseKp = hour >= 20 || hour <= 4 ? 3.2 : 2.3;
+            const variance = (Math.random() - 0.5) * 1.5;
+            const simulatedKp = Math.max(0, Math.min(9, baseKp + variance));
+            
+            return {
+                kp: parseFloat(simulatedKp.toFixed(1)),
+                visibility: simulatedKp >= 5 ? 90 : simulatedKp >= 3 ? 75 : 60,
+                isReal: false,
+                source: 'Simulado'
+            };
+        }
+
+        async function updateAllData() {
+            state.loading = true;
+            render();
+
+            try {
+                // Actualizar clima del día actual
+                state.liveWeather[state.currentDay] = await getRealWeather(state.currentDay);
+                
+                // Actualizar KP de Aurora
+                state.liveKP = await getRealAuroraKP();
+                
+                state.lastUpdate = new Date();
+            } catch (error) {
+                console.error('Error actualizando datos:', error);
+            }
+
+            state.loading = false;
+            render();
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const diff = tripStart - now;
+            if (diff > 0) {
+                const d = Math.floor(diff / 86400000);
+                const h = Math.floor((diff % 86400000) / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                const s = Math.floor((diff % 60000) / 1000);
+                countdown = `${d}d ${h}h ${m}m ${s}s`;
+            } else {
+                countdown = '¡EN CURSO!';
+            }
+            currentTime = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        }
+
+        function getAuroraStatus(kp) {
+            if (kp >= 5) return { text: 'EXCELENTE', color: 'text-green-400', bg: 'bg-green-500/20', emoji: '🔥' };
+            if (kp >= 3) return { text: 'BUENO', color: 'text-yellow-400', bg: 'bg-yellow-500/20', emoji: '👍' };
+            return { text: 'BAJO', color: 'text-gray-400', bg: 'bg-gray-500/20', emoji: '😐' };
+        }
+
+        // Sistema de Alertas
+        function toggleNotifications() {
+            if (!('Notification' in window)) {
+                alert('Tu navegador no soporta notificaciones');
+                return;
+            }
+
+            if (state.notificationsEnabled) {
+                state.notificationsEnabled = false;
+                state.scheduledAlerts.forEach(id => clearTimeout(id));
+                state.scheduledAlerts = [];
+                render();
+            } else {
+                if (Notification.permission === 'granted') {
+                    state.notificationsEnabled = true;
+                    scheduleAlertsForDay();
+                    render();
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === 'granted') {
+                            state.notificationsEnabled = true;
+                            scheduleAlertsForDay();
+                            render();
+                        } else {
+                            alert('Necesitas permitir notificaciones para usar esta función');
+                        }
+                    });
+                } else {
+                    alert('Las notificaciones están bloqueadas. Actívalas en la configuración del navegador.');
+                }
+            }
+        }
+
+        function scheduleAlertsForDay() {
+            state.scheduledAlerts.forEach(id => clearTimeout(id));
+            state.scheduledAlerts = [];
+
+            const day = itinerary[state.currentDay - 1];
+            if (!day || !day.schedule) return;
+
+            const now = new Date();
+            let alertCount = 0;
+
+            day.schedule.forEach(item => {
+                const eventTime = parseTime(item.time);
+                if (!eventTime) return;
+
+                const alertTime = new Date(eventTime.getTime() - 60 * 60 * 1000);
+
+                if (alertTime > now) {
+                    const timeUntilAlert = alertTime - now;
+                    const timeoutId = setTimeout(() => {
+                        showAlert(item.act, item.icon);
+                    }, timeUntilAlert);
+                    state.scheduledAlerts.push(timeoutId);
+                    alertCount++;
+                }
+            });
+
+            console.log(`✅ ${alertCount} alertas programadas para Día ${state.currentDay}`);
+        }
+
+        function parseTime(timeStr) {
+            const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!match) return null;
+
+            let hours = parseInt(match[1]);
+            const minutes = parseInt(match[2]);
+            const period = match[3].toUpperCase();
+
+            if (period === 'PM' && hours !== 12) hours += 12;
+            if (period === 'AM' && hours === 12) hours = 0;
+
+            const eventDate = new Date();
+            eventDate.setHours(hours, minutes, 0, 0);
+
+            return eventDate;
+        }
+
+        function showAlert(activity, icon) {
+            const title = '🇮🇸 Iceland Ultra Pro';
+            const body = `En 1 hora: ${activity}`;
+
+            if (Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">' + icon + '</text></svg>',
+                    requireInteraction: false
+                });
+            }
+
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-2xl z-50 animate-slide-down';
+            alertDiv.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">${icon}</span>
+                    <div>
+                        <p class="font-bold">En 1 hora</p>
+                        <p class="text-sm">${activity}</p>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(alertDiv);
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        function render() {
+            const theme = themes[state.selectedTheme];
+            const day = itinerary[state.currentDay - 1];
+            const weather = state.liveWeather[state.currentDay];
+            const auroraData = state.liveKP || { kp: null, isReal: false };
+            const auroraStatus = auroraData.kp !== null ? getAuroraStatus(auroraData.kp) : { text: 'CARGANDO', color: 'text-gray-400', bg: 'bg-gray-500/20', emoji: '⏳' };
+
+            document.getElementById('root').innerHTML = `
+<div class="min-h-screen bg-gradient-to-br ${theme.bg} text-white p-4">
+    <!-- Efectos de fondo -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div class="absolute bottom-1/3 right-1/3 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style="animation-delay:2s"></div>
+        <div class="absolute top-0 w-full h-32 bg-gradient-to-b from-green-400/10 via-purple-400/10 to-transparent animate-aurora"></div>
+    </div>
+
+    <div class="max-w-7xl mx-auto relative">
+        <!-- Header -->
+        <div class="bg-gradient-to-r ${theme.primary}/30 backdrop-blur-xl rounded-3xl p-6 mb-6 border border-white/10 shadow-2xl">
+            ${state.loading ? `
+                <div class="absolute top-4 left-4 flex items-center gap-2 bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full text-sm border border-blue-400/30 animate-pulse-slow">
+                    <span class="animate-spin">⚡</span> Actualizando datos...
+                </div>
+            ` : state.lastUpdate ? `
+                <div class="absolute top-4 left-4 flex items-center gap-2 bg-green-500/20 text-green-300 px-3 py-1 rounded-full text-xs border border-green-400/30">
+                    ✓ ${state.lastUpdate.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}
+                </div>
+            ` : ''}
+
+            <div class="absolute top-4 right-4 flex gap-2">
+                <button onclick="toggleNotifications()" 
+                    class="p-2 rounded-lg transition ${state.notificationsEnabled ? 'bg-green-500/30 text-green-300 border border-green-400' : 'bg-white/10'} hover:bg-white/20" 
+                    title="${state.notificationsEnabled ? 'Alertas ON' : 'Activar alertas'}">
+                    ${state.notificationsEnabled ? '🔔' : '🔕'}
+                </button>
+                <button onclick="updateAllData()" class="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition" title="Refrescar datos">🔄</button>
+                <button onclick="toggleSettings()" class="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition" title="Configuración">⚙️</button>
+            </div>
+
+            <div class="flex justify-between items-center mb-6 mt-8">
+                <div>
+                    <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent animate-gradient">
+                        ICELAND ULTRA PRO 2026
+                    </h1>
+                    <p class="text-blue-300 mt-2">1-8 Febrero • Datos en tiempo real ${auroraData.isReal ? '🟢' : '🔴'}</p>
+                </div>
+                <div class="text-5xl animate-float">⛰️</div>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-black/20 rounded-2xl p-4 border border-white/10">
+                    <div class="text-sm text-blue-300 mb-1">⏰ Countdown</div>
+                    <div class="text-xl font-bold font-mono">${countdown}</div>
+                </div>
+                <div class="bg-black/20 rounded-2xl p-4 border border-white/10">
+                    <div class="text-sm text-purple-300 mb-1 flex items-center gap-1">
+                        ${auroraStatus.emoji} Aurora KP ${auroraData.isReal ? '<span class="text-xs text-green-400 animate-pulse-slow">●LIVE</span>' : '<span class="text-xs text-red-400">●OFF</span>'}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="text-2xl font-bold">${auroraData.kp !== null ? auroraData.kp.toFixed(1) : '--'}</div>
+                        <span class="text-xs px-2 py-1 rounded-full ${auroraStatus.bg} ${auroraStatus.color} border border-current/30">
+                            ${auroraStatus.text}
+                        </span>
+                    </div>
+                    ${auroraData.source ? `<div class="text-xs text-gray-400 mt-1">${auroraData.source}</div>` : ''}
+                </div>
+                <div class="bg-black/20 rounded-2xl p-4 border border-white/10">
+                    <div class="text-sm text-yellow-300 mb-1 flex items-center gap-1">
+                        🌤️ ${weather && weather.isReal ? '<span class="text-xs text-green-400 animate-pulse-slow">●LIVE</span>' : 'Clima'}
+                    </div>
+                    <div class="text-xl font-bold">${weather ? weather.temp + '°F' : '--'}</div>
+                    ${weather ? `<div class="text-xs text-gray-400 mt-1">${weather.location}</div>` : ''}
+                </div>
+            </div>
+        </div>
+
+        ${state.showSettings ? renderSettings(theme) : ''}
+
+        <!-- Contenido principal -->
+        ${renderItinerary(day, theme, weather)}
+
+        <!-- Convertidor ISK/USD -->
+        ${renderConverter(theme)}
+
+        <!-- Información Crítica -->
+        ${renderCriticalInfo(theme)}
+
+        <!-- Footer -->
+        <div class="mt-6 text-center">
+            <div class="bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+                <p class="text-sm text-gray-400">
+                    Iceland 2026 • ${currentTime} • Status: ${auroraData.isReal ? '🟢 ONLINE' : '🔴 OFFLINE'}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+            `;
+        }
+
+        function renderSettings(theme) {
+            return `
+                <div class="bg-black/40 backdrop-blur-xl rounded-3xl p-6 mb-6 border border-white/10 animate-slide-down">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold">⚙️ Configuración</h3>
+                        <button onclick="toggleSettings()" class="text-gray-400 hover:text-white">✖️</button>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h4 class="font-semibold mb-3">🎨 Temas</h4>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            ${Object.keys(themes).map(key => `
+                                <button onclick="setTheme('${key}')" class="p-3 rounded-xl capitalize transition ${
+                                    state.selectedTheme === key 
+                                        ? `bg-gradient-to-r ${themes[key].primary} text-white shadow-lg` 
+                                        : 'bg-white/5 hover:bg-white/10'
+                                }">
+                                    ${key}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="bg-green-500/10 rounded-xl p-4 border border-green-400/20">
+                        <h4 class="font-semibold mb-2 text-green-400">✅ APIs Activas</h4>
+                        <div class="space-y-1 text-sm text-gray-300">
+                            <div>🌤️ Clima: OpenWeatherMap API</div>
+                            <div>⚡ Aurora: NOAA con proxy CORS</div>
+                            <div>💱 Tasa cambio: 1 USD = ${(1/exchangeRate).toFixed(2)} ISK</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-${state.notificationsEnabled ? 'green' : 'yellow'}-500/10 rounded-xl p-4 border border-${state.notificationsEnabled ? 'green' : 'yellow'}-400/20 mt-4">
+                        <h4 class="font-semibold mb-2 text-${state.notificationsEnabled ? 'green' : 'yellow'}-400 flex items-center gap-2">
+                            ${state.notificationsEnabled ? '🔔' : '🔕'} Sistema de Alertas
+                        </h4>
+                        <div class="text-sm text-gray-300 mb-3">
+                            ${state.notificationsEnabled ? `
+                                <p class="text-green-400 mb-2">✓ Alertas activadas</p>
+                                <p>Recibirás notificaciones <strong>1 hora antes</strong> de cada actividad del Día ${state.currentDay}.</p>
+                                ${state.scheduledAlerts.length > 0 ? `
+                                    <p class="text-xs text-gray-400 mt-2">${state.scheduledAlerts.length} alertas programadas para hoy</p>
+                                ` : '<p class="text-xs text-gray-400 mt-2">No hay alertas pendientes para hoy</p>'}
+                            ` : `
+                                <p class="text-yellow-400 mb-2">Las alertas están desactivadas</p>
+                                <p>Activa las notificaciones para recibir recordatorios 1 hora antes de cada actividad.</p>
+                            `}
+                        </div>
+                        <button onclick="toggleNotifications()" 
+                            class="w-full py-2 px-4 rounded-lg font-semibold transition ${
+                                state.notificationsEnabled 
+                                    ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30 border border-red-400/30' 
+                                    : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 border border-blue-400/30'
+                            }">
+                            ${state.notificationsEnabled ? '🔕 Desactivar Alertas' : '🔔 Activar Alertas'}
+                        </button>
+                    </div>
+
+                    <div class="bg-blue-500/10 rounded-xl p-4 border border-blue-400/20 mt-4">
+                        <h4 class="font-semibold mb-2 text-blue-400">🔧 Proxies CORS</h4>
+                        <div class="space-y-1 text-xs text-gray-400">
+                            <div>1. AllOrigins (primario)</div>
+                            <div>2. CorsProxy.io (respaldo)</div>
+                            <div>3. ThingProxy (último recurso)</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderItinerary(day, theme, weather) {
+            return `
+                <div class="bg-black/20 backdrop-blur-sm rounded-3xl p-6 mb-6 border border-white/10">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold">📅 Itinerario</h2>
+                        <button onclick="toggleTimeline()" class="px-4 py-2 bg-white/10 rounded-xl hover:bg-white/20 transition text-sm">
+                            ${state.showTimeline ? '🔼 Ocultar' : '🔽 Ver'} Timeline
+                        </button>
+                    </div>
+
+                    <!-- Selector días -->
+                    <div class="flex space-x-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                        ${itinerary.map(d => `
+                            <button onclick="setDay(${d.day})" class="flex-shrink-0 px-6 py-3 rounded-xl font-semibold transition ${
+                                state.currentDay === d.day
+                                    ? `bg-gradient-to-r ${theme.primary} text-white shadow-lg`
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            }">
+                                Día ${d.day}
+                            </button>
+                        `).join('')}
+                    </div>
+
+                    ${state.showTimeline && day.schedule ? `
+                        <div class="bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-2xl p-6 mb-6 border border-purple-400/20 animate-slide-down">
+                            <h3 class="font-bold text-xl text-purple-300 mb-6">⏰ Cronograma Detallado</h3>
+                            <div class="space-y-4 relative">
+                                <div class="absolute left-6 top-2 bottom-2 w-0.5 bg-purple-400/30"></div>
+                                ${day.schedule.map((item, idx) => `
+                                    <div class="flex items-start gap-4 group">
+                                        <div class="flex flex-col items-center">
+                                            <div class="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 border-4 border-black/20 flex items-center justify-center group-hover:scale-110 transition">
+                                                <span class="text-2xl">${item.icon}</span>
+                                            </div>
+                                            ${idx < day.schedule.length - 1 ? '<div class="w-0.5 h-8 bg-purple-400/30 my-1"></div>' : ''}
+                                        </div>
+                                        <div class="flex-1 bg-black/20 rounded-xl p-4 group-hover:bg-black/30 transition border border-white/5">
+                                            <div class="flex justify-between items-start mb-2 flex-wrap gap-2">
+                                                <p class="font-semibold text-lg text-blue-300">${item.act}</p>
+                                                <div class="flex items-center gap-2 bg-black/40 rounded-lg px-2 py-1">
+                                                    <span class="text-xs">⏰</span>
+                                                    <span class="text-sm font-mono">${item.time}</span>
+                                                </div>
+                                            </div>
+                                            ${item.dur !== '-' ? `<p class="text-sm text-gray-400 mb-2">⏱️ ${item.dur}</p>` : ''}
+                                            ${item.note ? `<p class="text-sm text-gray-300 italic">💡 ${item.note}</p>` : ''}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
+                    <!-- Info del día -->
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-start flex-wrap gap-4">
+                            <div>
+                                <h3 class="text-3xl font-bold bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent">
+                                    ${day.title}
+                                </h3>
+                                <p class="text-gray-400 mt-1">${day.date}</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-yellow-400 text-lg">🚗 ${day.driving}</div>
+                                <p class="text-sm text-gray-400">📷 ~${day.photos} fotos</p>
+                            </div>
+                        </div>
+
+                        <!-- Horas de Luz -->
+                        <div class="bg-gradient-to-r from-orange-500/10 to-yellow-500/10 rounded-2xl p-4 border border-orange-400/20">
+                            <h4 class="font-semibold text-orange-300 mb-3 flex items-center gap-2">
+                                ☀️ Horas de Luz Natural
+                            </h4>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <p class="text-gray-400 text-xs mb-1">🌅 Amanecer</p>
+                                    <p class="font-bold text-orange-400">${day.sunrise}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-xs mb-1">🌇 Atardecer</p>
+                                    <p class="font-bold text-orange-400">${day.sunset}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-400 text-xs mb-1">⏱️ Total</p>
+                                    <p class="font-bold text-yellow-400">${day.lightHours}</p>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-xs text-gray-400 bg-black/20 rounded-lg p-2 italic">
+                                💡 Planifica tus fotos durante estas horas de luz
+                            </div>
+                        </div>
+
+                        ${weather ? `
+                            <div class="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-2xl p-4 border border-blue-400/20">
+                                <div class="flex justify-between items-center flex-wrap gap-4">
+                                    <div class="flex items-center gap-4">
+                                        <div class="text-5xl">${weather.icon}</div>
+                                        <div>
+                                            <p class="text-3xl font-bold">${weather.temp}°F</p>
+                                            <p class="text-gray-300 capitalize">${weather.condition}</p>
+                                            <p class="text-sm text-gray-400">${weather.location} • Se siente: ${weather.feels}°F</p>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4 text-sm">
+                                        <div>💨 ${weather.wind} mph</div>
+                                        <div>💧 ${weather.humid}%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div>
+                            <h4 class="text-sm font-semibold text-gray-400 mb-2">⭐ Highlights</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${day.highlights.map(h => `
+                                    <span class="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm border border-blue-400/30">
+                                        ${h}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        ${day.aurora ? `
+                            <div class="bg-purple-600/20 rounded-xl p-4 border border-purple-400/30">
+                                <div class="flex justify-between items-start mb-3 flex-wrap gap-4">
+                                    <div>
+                                        <h4 class="font-bold text-lg text-purple-300">🌙 ${day.aurora.spot}</h4>
+                                        <p class="text-sm text-gray-400">${day.aurora.time} • Épico: ${day.aurora.epic}/10</p>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div class="bg-black/30 rounded-lg p-3 cursor-pointer hover:bg-black/40"
+                                        onclick="copyCoords('${day.aurora.coords}')">
+                                        <p class="text-xs text-gray-400 mb-1">📍 Coordenadas (toca para copiar)</p>
+                                        <p class="font-mono text-sm text-center text-blue-300 font-bold">${day.aurora.coords}</p>
+                                    </div>
+                                    <a href="https://www.google.com/maps/search/?api=1&query=${day.aurora.coords}" 
+                                       target="_blank"
+                                       class="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 rounded-lg p-3 flex items-center justify-center gap-2 text-white font-semibold transition shadow-lg text-sm">
+                                        🗺️ Abrir en Maps
+                                    </a>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${day.hotel ? `
+                            <div class="text-sm text-gray-400 bg-black/20 rounded-lg p-3">
+                                🏨 ${day.hotel}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderConverter(theme) {
+            return `
+                <div class="bg-black/20 backdrop-blur-sm rounded-3xl p-6 mb-6 border border-white/10">
+                    <h3 class="text-2xl font-bold mb-6">💱 Convertidor ISK ↔ USD</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Coronas Islandesas (ISK)</label>
+                            <input 
+                                type="number" 
+                                id="iskInput"
+                                value="${state.iskAmount}"
+                                oninput="convertISK(this.value)"
+                                class="w-full bg-black/30 border border-white/20 rounded-xl p-4 text-2xl font-mono text-center text-white focus:outline-none focus:border-blue-400"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Dólares (USD)</label>
+                            <input 
+                                type="number" 
+                                id="usdInput"
+                                value="${state.usdAmount}"
+                                oninput="convertUSD(this.value)"
+                                class="w-full bg-black/30 border border-white/20 rounded-xl p-4 text-2xl font-mono text-center text-white focus:outline-none focus:border-green-400"
+                            />
+                        </div>
+                    </div>
+                    <div class="text-center text-sm text-gray-400 mt-4">
+                        Tasa: 1 USD = ${(1/exchangeRate).toFixed(2)} ISK
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCriticalInfo(theme) {
+            return `
+                <div class="bg-black/20 backdrop-blur-sm rounded-3xl p-6 mb-6 border border-white/10">
+                    <h3 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                        <span class="text-3xl">⚠️</span> Información Crítica
+                    </h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <!-- Recursos Web -->
+                        <div class="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl p-4 border border-blue-400/20">
+                            <h4 class="font-bold text-lg text-blue-300 mb-3 flex items-center gap-2">
+                                🌐 Recursos Web
+                            </h4>
+                            <div class="space-y-2 text-sm">
+                                <a href="https://en.vedur.is" target="_blank" class="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition">
+                                    <span>🌤️</span>
+                                    <span>vedur.is - Clima oficial</span>
+                                </a>
+                                <a href="https://safetravel.is" target="_blank" class="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition">
+                                    <span>🚨</span>
+                                    <span>safetravel.is - Seguridad</span>
+                                </a>
+                                <a href="https://road.is" target="_blank" class="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition">
+                                    <span>🚗</span>
+                                    <span>road.is - Estado carreteras</span>
+                                </a>
+                                <a href="https://en.vedur.is/weather/forecasts/aurora" target="_blank" class="flex items-center gap-2 text-blue-300 hover:text-blue-200 transition">
+                                    <span>🌌</span>
+                                    <span>Aurora forecast oficial</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Info Práctica -->
+                        <div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl p-4 border border-purple-400/20">
+                            <h4 class="font-bold text-lg text-purple-300 mb-3 flex items-center gap-2">
+                                💡 Info Práctica
+                            </h4>
+                            <div class="space-y-2 text-sm text-gray-300">
+                                <div class="flex items-start gap-2">
+                                    <span>📞</span>
+                                    <div>
+                                        <p class="font-semibold text-red-400">Emergencias: 112</p>
+                                        <p class="text-xs text-gray-400">Policía, ambulancia, rescate</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <span>⚡</span>
+                                    <p>Enchufes: Tipo C/F (230V)</p>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <span>💧</span>
+                                    <p>Agua del grifo: potable y gratis</p>
+                                </div>
+                                <div class="flex items-start gap-2">
+                                    <span>🚽</span>
+                                    <p>Baños públicos: ~500 ISK</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Supermercados -->
+                    <div class="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl p-4 border border-green-400/20 mb-4">
+                        <h4 class="font-bold text-lg text-green-300 mb-3 flex items-center gap-2">
+                            🛒 Supermercados (Orden: Más barato → Más caro)
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div class="bg-black/30 rounded-xl p-3 border border-green-400/30">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-2xl">🐷</span>
+                                    <div>
+                                        <p class="font-bold text-pink-400">Bónus</p>
+                                        <p class="text-xs text-gray-400">Logo cerdito rosa</p>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-green-400 font-semibold">
+                                    ⭐ MÁS BARATO
+                                </div>
+                            </div>
+
+                            <div class="bg-black/30 rounded-xl p-3 border border-green-400/30">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-2xl">🏪</span>
+                                    <div>
+                                        <p class="font-bold text-yellow-400">Krónan</p>
+                                        <p class="text-xs text-gray-400">Muy económico</p>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-yellow-400 font-semibold">
+                                    ⭐ ECONÓMICO
+                                </div>
+                            </div>
+
+                            <div class="bg-black/30 rounded-xl p-3 border border-green-400/30">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span class="text-2xl">🛍️</span>
+                                    <div>
+                                        <p class="font-bold text-blue-400">Nettó</p>
+                                        <p class="text-xs text-gray-400">Buenos precios</p>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-blue-400 font-semibold">
+                                    ⭐ BUENOS PRECIOS
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-xs text-gray-400 bg-black/30 rounded-lg p-2">
+                            💡 <strong>Tip:</strong> Evita comprar en gasolineras (muy caro). Compra snacks/agua en supermercados.
+                        </div>
+                    </div>
+
+                    <!-- Gasolineras Estratégicas -->
+                    <div class="bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl p-4 border border-orange-400/20">
+                        <h4 class="font-bold text-lg text-orange-300 mb-3 flex items-center gap-2">
+                            ⛽ Estaciones de Gasolina Estratégicas
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <div class="bg-black/30 rounded-lg p-3 border border-orange-400/20">
+                                <p class="font-semibold text-orange-300 mb-1">📍 Antes de Vík</p>
+                                <p class="text-xs text-gray-400">Última gasolinera grande antes de la costa sur. <strong>Llena el tanque aquí.</strong></p>
+                            </div>
+                            <div class="bg-black/30 rounded-lg p-3 border border-orange-400/20">
+                                <p class="font-semibold text-orange-300 mb-1">📍 Jökulsárlón área</p>
+                                <p class="text-xs text-gray-400">Opciones limitadas. No esperes encontrar gasolineras cada 5km.</p>
+                            </div>
+                            <div class="bg-black/30 rounded-lg p-3 border border-orange-400/20">
+                                <p class="font-semibold text-orange-300 mb-1">📍 Reykjavík salida</p>
+                                <p class="text-xs text-gray-400">Llena antes de salir de la ciudad hacia el Golden Circle.</p>
+                            </div>
+                            <div class="bg-black/30 rounded-lg p-3 border border-orange-400/20">
+                                <p class="font-semibold text-orange-300 mb-1">📍 Península Snaefellsnes</p>
+                                <p class="text-xs text-gray-400">Gasolineras escasas. Planifica con anticipación.</p>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-xs bg-red-500/20 text-red-300 rounded-lg p-2 border border-red-400/30">
+                            <strong>⚠️ CRÍTICO:</strong> Nunca dejes que el tanque baje de 1/4. En invierno, las gasolineras rurales pueden estar cerradas.
+                        </div>
+                    </div>
+
+                    <!-- Consejos de Seguridad -->
+                    <div class="mt-4 bg-red-500/10 rounded-2xl p-4 border border-red-400/30">
+                        <h4 class="font-bold text-lg text-red-300 mb-3 flex items-center gap-2">
+                            🚨 Seguridad Extrema
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-300">
+                            <div class="flex items-start gap-2">
+                                <span class="text-red-400">⚠️</span>
+                                <p><strong>Reynisfjara:</strong> Olas asesinas - NUNCA des la espalda al mar</p>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-red-400">⚠️</span>
+                                <p><strong>Hielo:</strong> Glaciares son extremadamente resbaladizos</p>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-yellow-400">⚡</span>
+                                <p><strong>Tormentas:</strong> Vientos de +100 km/h pueden volcarte</p>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="text-blue-400">❄️</span>
+                                <p><strong>Carreteras:</strong> Hielo negro invisible - conduce LENTO</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Event handlers
+        function setDay(day) {
+            state.currentDay = day;
+            if (!state.liveWeather[day]) {
+                updateAllData();
+            } else {
+                render();
+            }
+            // Reprogramar alertas para el nuevo día
+            if (state.notificationsEnabled) {
+                scheduleAlertsForDay();
+            }
+        }
+
+        function toggleTimeline() {
+            state.showTimeline = !state.showTimeline;
+            render();
+        }
+
+        function toggleSettings() {
+            state.showSettings = !state.showSettings;
+            render();
+        }
+
+        function setTheme(theme) {
+            state.selectedTheme = theme;
+            render();
+        }
+
+        function convertISK(isk) {
+            state.iskAmount = isk;
+            const usd = (parseFloat(isk || 0) * exchangeRate).toFixed(2);
+            state.usdAmount = usd;
+            const usdInput = document.getElementById('usdInput');
+            if (usdInput && document.activeElement.id !== 'usdInput') {
+                usdInput.value = usd;
+            }
+        }
+
+        function convertUSD(usd) {
+            state.usdAmount = usd;
+            const isk = (parseFloat(usd || 0) / exchangeRate).toFixed(0);
+            state.iskAmount = isk;
+            const iskInput = document.getElementById('iskInput');
+            if (iskInput && document.activeElement.id !== 'iskInput') {
+                iskInput.value = isk;
+            }
+        }
+
+        function copyCoords(coords) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(coords).then(() => {
+                    alert('📋 Coordenadas copiadas: ' + coords);
+                });
+            } else {
+                alert('Coordenadas: ' + coords);
+            }
+        }
+
+        // Init
+        updateTime();
+        setInterval(updateTime, 1000);
+        updateAllData(); // Cargar datos inmediatamente
+        setInterval(updateAllData, 5 * 60 * 1000); // Actualizar cada 5 minutos
+        render();
+    </script>
+</body>
+</html>
