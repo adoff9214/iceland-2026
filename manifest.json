@@ -1,0 +1,24 @@
+{
+  "name": "Iceland Ultra Pro 2026",
+  "short_name": "Iceland 2026",
+  "description": "Dashboard interactivo para viaje fotográfico a Islandia",
+  "start_url": "/iceland-2026/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e3a8a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://em-content.zobj.net/source/google/350/flag-iceland_1f1ee-1f1f8.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://em-content.zobj.net/source/google/350/flag-iceland_1f1ee-1f1f8.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
